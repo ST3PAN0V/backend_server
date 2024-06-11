@@ -180,9 +180,9 @@ StringResponse MakeStringResponse(http::status status, RequestType req_type, Str
         ModifyResponseHEAD(response, req, game);
         break;
     case RequestType::OTHER:
-        response.body() = "Invalid method"sv;
-        response.set(http::field::allow, "GET, HEAD");
-        response.content_length(static_cast<size_t>(14));
+        // response.body() = "Invalid method"sv;
+        // response.set(http::field::allow, "GET, HEAD");
+        // response.content_length(static_cast<size_t>(14));
         break;
     
     default:
