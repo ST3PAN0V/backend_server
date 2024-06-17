@@ -1,28 +1,26 @@
 #include "json_loader.h"
-
 #include <fstream>
-
 
 namespace json_loader {
 
-model::Road&& MakeObjectRoadFromJson(const boost::json::value& jsroad) {
-    if (jsroad.find("x1") != jsroad.end()) {
+model::Road MakeObjectRoadFromJson(const boost::json::value& jsroad) {
+    try {
         return model::Road(model::Road::HORIZONTAL, {static_cast<int>(jsroad.at("x0").as_int64()),
                 static_cast<int>(jsroad.at("y0").as_int64())}, static_cast<int>(jsroad.at("x1").as_int64()));
-    } else {
+    } catch (const std::exception& ex) {
         return model::Road(model::Road::VERTICAL, {static_cast<int>(jsroad.at("x0").as_int64()),
                 static_cast<int>(jsroad.at("y0").as_int64())}, static_cast<int>(jsroad.at("y1").as_int64()));
     }
 }
 
-model::Building&& MakeObjectBuildingFromJson(const boost::json::value& jsbuilding) {
+model::Building MakeObjectBuildingFromJson(const boost::json::value& jsbuilding) {
     auto point = model::Point(static_cast<int>(jsbuilding.at("x").as_int64()), static_cast<int>(jsbuilding.at("y").as_int64()));
     auto size = model::Size(static_cast<int>(jsbuilding.at("w").as_int64()), static_cast<int>(jsbuilding.at("h").as_int64()));
     auto rectangle = model::Rectangle(std::move(point), std::move(size));
     return model::Building(std::move(rectangle));
 }
 
-model::Office&& MakeObjectOfficeFromJson(const boost::json::value& jsoffice) {
+model::Office MakeObjectOfficeFromJson(const boost::json::value& jsoffice) {
     using IdOffice = util::Tagged<std::string, model::Office>;
     auto point = model::Point(static_cast<int>(jsoffice.at("x").as_int64()), static_cast<int>(jsoffice.at("y").as_int64()));
     auto offset = model::Offset(static_cast<int>(jsoffice.at("offsetX").as_int64()), static_cast<int>(jsoffice.at("offsetY").as_int64()));
@@ -50,22 +48,22 @@ model::Game LoadGame(const std::filesystem::path& json_path) {
         model::Map map(map_id, map_name);
 
         for (const auto& jsroad : jsmap.at("roads").as_array()) {
-            map.AddRoad(MakeObjectRoadFromJson(jsroad));
+            map.AddRoad(std::move(MakeObjectRoadFromJson(jsroad)));
         }
 
         for (const auto& jsbuilding : jsmap.at("buildings").as_array()) {
-            map.AddBuilding(MakeObjectBuildingFromJson(jsbuilding));
+            map.AddBuilding(std::move(MakeObjectBuildingFromJson(jsbuilding)));
         }
 
         for (const auto& jsoffice : jsmap.at("offices").as_array()) {
-            map.AddOffice(MakeObjectOfficeFromJson(jsoffice));
+            map.AddOffice(std::move(MakeObjectOfficeFromJson(jsoffice)));
         }
         game.AddMap(std::move(map));
     }
     return game;
 }
 
-boost::json::object&& ParseRoadInJson(const model::Road& road) {
+boost::json::object ParseRoadInJson(const model::Road& road) {
     boost::json::object road_node;
     road_node["x0"] = road.GetStart().x;
     road_node["y0"] = road.GetStart().y;
@@ -77,7 +75,7 @@ boost::json::object&& ParseRoadInJson(const model::Road& road) {
     return road_node;
 }
 
-boost::json::object&& ParseBuildingInJson(const model::Building& building) {
+boost::json::object ParseBuildingInJson(const model::Building& building) {
     boost::json::object building_node;
     building_node["x"] = building.GetBounds().position.x;
     building_node["y"] = building.GetBounds().position.y;
@@ -86,7 +84,7 @@ boost::json::object&& ParseBuildingInJson(const model::Building& building) {
     return building_node;
 }
 
-boost::json::object&& ParseOfficeInJson(const model::Office& office) {
+boost::json::object ParseOfficeInJson(const model::Office& office) {
     boost::json::object office_node;
     office_node["id"] = office.GetId().operator*();
     office_node["x"] = office.GetPosition().x;
@@ -102,7 +100,9 @@ std::optional<std::string> FoundAndGetStringMap(const std::vector<model::Map>& m
         return map.GetId().operator*() == needIdMap;
     });
 
+
     if (needMap != maps.end()) {
+        model::Map map = *needMap;
         boost::json::object response;
 
         response["id"] = map.GetId().operator*();
@@ -110,19 +110,19 @@ std::optional<std::string> FoundAndGetStringMap(const std::vector<model::Map>& m
 
         boost::json::array roads;
         for (const auto& road : map.GetRoads()) {
-            roads.push_back(ParseRoadJson(road));
+            roads.push_back(std::move(ParseRoadInJson(road)));
         }
         response["roads"] = roads;
 
         boost::json::array buildings;
         for (const auto& building : map.GetBuildings()) {
-            buildings.push_back(ParseBuildingInJson(building));
+            buildings.push_back(std::move(ParseBuildingInJson(building)));
         }
         response["buildings"] = buildings;
 
         boost::json::array offices;
         for (const auto& office : map.GetOffices()) {
-            offices.push_back(ParseOfficeInJson(office));
+            offices.push_back(std::move(ParseOfficeInJson(office)));
         }
         response["offices"] = offices;
         

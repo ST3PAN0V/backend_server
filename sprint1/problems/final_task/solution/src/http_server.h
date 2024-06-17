@@ -1,6 +1,7 @@
 #pragma once
 #include "sdk.h"
 #include "model.h"
+#include "json_loader.h"
 
 // boost.beast будет использовать std::string_view вместо boost::string_view
 #define BOOST_BEAST_USE_STD_STRING_VIEW
@@ -12,10 +13,6 @@
 #include <boost/json.hpp>
 #include <iostream>
 #include <assert.h>
-#include <optional>
-
-#define BADREQUEST "badRequest"s
-#define MAPNOTFOUND "mapNotFound"s
 
 namespace http_server {
 
@@ -196,11 +193,11 @@ void ServeHttp(net::io_context& ioc, const tcp::endpoint& endpoint, RequestHandl
     std::make_shared<MyListener>(ioc, endpoint, std::forward<RequestHandler>(handler))->Run();
 }
 
-StringResponse MakeErrorString(std::string errCode, const StringRequest& req);
+StringResponse MakeErrorString(std::string errCode, const StringRequest& req, StringResponse& response);
 
 void ModifyResponseGET(StringResponse& response, const StringRequest& req, const model::Game& game);
 
-std::optional<StringResponse> MakeStringResponse(http::status status, RequestType req_type, StringRequest&& req, const model::Game& game);
+StringResponse MakeStringResponse(http::status status, RequestType req_type, StringRequest&& req, const model::Game& game);
 
 StringResponse HandleRequest(StringRequest&& req, const model::Game& game);
 

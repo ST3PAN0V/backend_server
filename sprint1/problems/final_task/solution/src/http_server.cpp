@@ -56,37 +56,46 @@ void SessionBase::Close() {
     stream_.socket().shutdown(tcp::socket::shutdown_send, ec);
 }
 
-StringResponse MakeErrorString(http::status errCode, std::string description, const StringRequest& req) {
-    auto makeError = [&req, &errCode, &err](http::status codeStatus, std::string description) {
-        boost::json::object err;
-        StringResponse response(codeStatus, req.version());
-        response.set(http::field::content_type, ContentType::APP_JSON);
-        err["code"] = errCode;
-        err["message"] = description;
-        response.body() = boost::json::serialize(err);
-        response.content_length(response.body().size());
-        return response;
+void MakeErrorString(http::status errCode, std::string description, const StringRequest& req, StringResponse& response) {
+    auto getStrFromCode = [](http::status errCode) {
+        switch (errCode) {
+            case http::status::bad_request:
+                return "badRequest";
+                break;
+            case http::status::not_found:
+                return "mapNotFound";
+                break;
+            default:
+                return "UnknownError";
+                break;
+        }
     };
 
-    return makeError(errCode, description);
+    boost::json::object err;
+    StringResponse responseErr(errCode, req.version());
+    responseErr.set(http::field::content_type, ContentType::APP_JSON);
+    err["code"] = getStrFromCode(errCode);
+    err["message"] = description;
+    responseErr.body() = boost::json::serialize(err);
+    
+    response = responseErr;
 }
 
 void ModifyResponseGET(StringResponse& response, const StringRequest& req, const model::Game& game) {
     response.set(http::field::content_type, ContentType::APP_JSON);
     
     if (req.target() == "/api/v1/maps") {
-        response.body() = std::move(GetStringFromMaps(game.GetMaps()));
+        response.body() = std::move(json_loader::GetStringFromMaps(game.GetMaps()));
     } else if (req.target().substr(0, 13) == "/api/v1/maps/") {
         std::string needed_map = std::string(req.target().substr(13, req.target().size()));
-        auto tmp = std::move(FoundAndGetStringMap(game.GetMaps(), needed_map));
+        auto tmp = std::move(json_loader::FoundAndGetStringMap(game.GetMaps(), needed_map));
         if (tmp.has_value()) {
             response.body() = std::move(*tmp);
-
         } else {
-            MakeErrorString(http::status::not_found, "Map not found", req);
+            MakeErrorString(http::status::not_found, "Map not found", req, response);
         }
     } else if (req.target().substr(0,5) == "/api/") {
-        MakeErrorString(http::status::bad_request, "Bad request", req);
+        MakeErrorString(http::status::bad_request, "Bad request", req, response);
     }
 
     response.content_length(response.body().size());

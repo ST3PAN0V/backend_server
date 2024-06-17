@@ -33,7 +33,9 @@ int main(int argc, const char* argv[]) {
     }
     try {
         // 1. Загружаем карту из файла и построить модель игры
+
         model::Game game = json_loader::LoadGame(argv[1]);
+        
         // 2. Инициализируем io_context
         const unsigned num_threads = std::thread::hardware_concurrency();
         net::io_context ioc(num_threads);
@@ -45,6 +47,7 @@ int main(int argc, const char* argv[]) {
                 ioc.stop();
             }
         });
+        
         // 4. Создаём обработчик HTTP-запросов и связываем его с моделью игры
         http_handler::RequestHandler handler{game};
 
