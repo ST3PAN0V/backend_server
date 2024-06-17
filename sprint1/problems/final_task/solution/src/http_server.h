@@ -11,6 +11,7 @@
 #include <boost/beast/http.hpp>
 #include <boost/json.hpp>
 #include <iostream>
+#include <assert.h>
 #include <optional>
 
 #define BADREQUEST "badRequest"s
@@ -195,19 +196,11 @@ void ServeHttp(net::io_context& ioc, const tcp::endpoint& endpoint, RequestHandl
     std::make_shared<MyListener>(ioc, endpoint, std::forward<RequestHandler>(handler))->Run();
 }
 
-StringResponse MakeErrorString(std::string errCode, StringRequest&& req);
+StringResponse MakeErrorString(std::string errCode, const StringRequest& req);
 
-void MakeErrorString(std::string err);
+void ModifyResponseGET(StringResponse& response, const StringRequest& req, const model::Game& game);
 
-std::optional<std::string> FoundAndGetStringMap(const std::vector<model::Map>& maps, std::string_view needIdMap);
-
-std::string GetStringFromMaps(const std::vector<model::Map>& maps);
-
-void ModifyResponseGET(StringResponse& response, const StringRequest& req);
-
-void ModifyResponseHEAD(StringResponse& response, const StringRequest& req);
-
-StringResponse MakeStringResponse(http::status status, RequestType req_type, StringRequest&& req);
+std::optional<StringResponse> MakeStringResponse(http::status status, RequestType req_type, StringRequest&& req, const model::Game& game);
 
 StringResponse HandleRequest(StringRequest&& req, const model::Game& game);
 
