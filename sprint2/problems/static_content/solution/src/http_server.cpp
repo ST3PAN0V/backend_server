@@ -1,6 +1,5 @@
 #include "http_server.h"
 
-
 namespace http_server {
 
 void SessionBase::Run() {
@@ -57,95 +56,45 @@ void SessionBase::Close() {
     stream_.socket().shutdown(tcp::socket::shutdown_send, ec);
 }
 
-std::string GetStringFromMaps(const std::vector<model::Map>& maps) {
-    std::string returnObject;
-
-    returnObject += "[";
-    for (const auto& map : maps) {
-        returnObject += "{\"id\": \"" + map.GetId().operator*() + "\", \"name\": \"" + map.GetName() + "\"}, ";
-    }
-    returnObject = returnObject.substr(0, returnObject.size()-2) + "]";
-    return returnObject;
-}
-
-std::optional<std::string> FoundAndGetStringMap(const std::vector<model::Map>& maps, const std::string& needIdMap) {
-    for (const auto& map : maps) {
-        if (map.GetId().operator*() == needIdMap) {
-            boost::json::object response;
-
-            response["id"] = map.GetId().operator*();
-            response["name"] =  map.GetName();
-
-            // Дороги
-            boost::json::array roads;
-            for (const auto& road : map.GetRoads()) {
-                boost::json::object road_node;
-                road_node["x0"] = road.GetStart().x;
-                road_node["y0"] = road.GetStart().y;
-                if (road.IsHorizontal()) {
-                    road_node["x1"] = road.GetEnd().x;
-                } else {
-                    road_node["y1"] = road.GetEnd().y;
-                }
-                roads.push_back(road_node);
-            }
-            response["roads"] = roads;
-
-            // Здания
-            boost::json::array buildings;
-            for (const auto& building : map.GetBuildings()) {
-                boost::json::object building_node;
-                building_node["x"] = building.GetBounds().position.x;
-                building_node["y"] = building.GetBounds().position.y;
-                building_node["w"] = building.GetBounds().size.width;
-                building_node["h"] = building.GetBounds().size.height;
-                buildings.push_back(building_node);
-            }
-            response["buildings"] = buildings;
-
-            // оффисы
-            boost::json::array offices;
-            for (const auto& office : map.GetOffices()) {
-                boost::json::object office_node;
-                office_node["id"] = office.GetId().operator*();
-                office_node["x"] = office.GetPosition().x;
-                office_node["y"] = office.GetPosition().y;
-                office_node["offsetX"] = office.GetOffset().dx;
-                office_node["offsetY"] = office.GetOffset().dy;
-                offices.push_back(office_node);
-            }
-            response["offices"] = offices;
-            
-            return boost::json::serialize(response);
+void MakeErrorString(http::status errCode, std::string description, const StringRequest& req, StringResponse& response, std::string_view contentType) {
+    auto getStrFromCode = [](http::status errCode) {
+        switch (errCode) {
+            case http::status::bad_request:
+                return "badRequest";
+                break;
+            case http::status::not_found:
+                return "mapNotFound";
+                break;
+            default:
+                return "UnknownError";
+                break;
         }
-    }
-    return std::nullopt;
-}
-
-StringResponse MakeErrorString(std::string errCode, const StringRequest& req) {
-    boost::json::object err;
-
-    auto makeError = [&req, &errCode, &err](http::status codeStatus, std::string description){
-        StringResponse response(codeStatus, req.version());
-        response.set(http::field::content_type, ContentType::APP_JSON);
-        err["code"] = errCode;
-        err["message"] = description;
-        response.body() = boost::json::serialize(err);
-        response.content_length(response.body().size());
-        return response;
     };
 
-    if (errCode == MAPNOTFOUND) {
-        return makeError(http::status::not_found, "Map not found");
-    } else if (errCode == BADREQUEST) {
-        return makeError(http::status::bad_request, "Bad request");
-    }
+    boost::json::object err;
+    StringResponse responseErr(errCode, req.version());
+    responseErr.set(http::field::content_type, contentType);
+    err["code"] = getStrFromCode(errCode);
+    err["message"] = description;
+    responseErr.body() = boost::json::serialize(err);
+    
+    response = responseErr;
 }
 
-void HandleGETResponse(StringResponse& response, const StringRequest& req, const model::Game& game) {
-    if (req.target().substr(0,5) == "/api/") HandleAPIResponse(response, req, game);
-    else {
-        HandleSTATICResponse(response, req, game);
+void HandleAPIResponse(StringResponse& response, const StringRequest& req, const model::Game& game) {
+    response.set(http::field::content_type, ContentType::APP_JSON);
+    if (req.target() == "/api/v1/maps") {
+        response.body() = std::move(json_loader::GetStringFromMaps(game.GetMaps()));
+    } else if (req.target().substr(0, 13) == "/api/v1/maps/") {
+        std::string needed_map = std::string(req.target().substr(13, req.target().size()));
+        auto tmp = std::move(json_loader::FoundAndGetStringMap(game.GetMaps(), needed_map));
+        if (tmp.has_value()) {
+            response.body() = std::move(*tmp);
+        } else {
+            MakeErrorString(http::status::not_found, "Map not found", req, response, ContentType::APP_JSON);
+        }
+    } else {
+        MakeErrorString(http::status::bad_request, "Bad request", req, response, ContentType::APP_JSON);
     }
 }
 
@@ -153,8 +102,6 @@ bool IsSubPath(fs::path path, fs::path base) {
     // Приводим оба пути к каноничному виду (без . и ..)
     path = fs::weakly_canonical(path);
     base = fs::weakly_canonical(base);
-    std::cout << path << std::endl;
-    std::cout << base << std::endl;
 
     // Проверяем, что все компоненты base содержатся внутри path
     for (auto b = base.begin(), p = path.begin(); b != base.end(); ++b, ++p) {
@@ -172,80 +119,60 @@ std::string read_file(const std::string& file_path) {
         contents << file.rdbuf();
         return contents.str();
     }
-    return "";
+    assert(false); // не удалось открыть файл
 }
 
-void HandleSTATICResponse(StringResponse& response, const StringRequest& req, const model::Game& game) {
-    if (IsSubPath("/static" + std::string(req.target().data(), req.target().size()), "/static")) {
-        std::string file_path = "./../static" + std::string(req.target().data(), req.target().size());
-        std::cout<< file_path << std::endl;
-        std::ifstream file_stream(file_path, std::ios::binary);
+void HandleGETResponse(StringResponse& response, const StringRequest& req, const model::Game& game, const std::string& staticFolderPath) {
+    if (req.target().substr(0,5) == "/api/") HandleAPIResponse(response, req, game);
+    else {
+        HandleSTATICResponse(response, req, game, staticFolderPath);
+    }
+    response.content_length(response.body().size());
+}
+
+void HandleSTATICResponse(StringResponse& response, const StringRequest& req, const model::Game& game, const std::string& staticFolderPath) {
+    std::string modStaticPath = "/" + staticFolderPath;
+    std::string requestTarget = std::string(req.target().data(), req.target().size());
+
+    if (IsSubPath(modStaticPath + requestTarget, modStaticPath)) {
+        std::string file_path = "./.." + modStaticPath + requestTarget;
+        if (requestTarget == "/") {
+            file_path = "./.." + modStaticPath + "/index.html";
+        }
+        std::ifstream file_stream(file_path);
+        
         if (file_stream) {
             std::string file_contents((std::istreambuf_iterator<char>(file_stream)), std::istreambuf_iterator<char>());
             response.body() = file_contents;
-
         } else {
-            throw std::invalid_argument(MAPNOTFOUND);
+            MakeErrorString(http::status::not_found, "Not found", req, response, ContentType::TEXT_PLAIN);
         }
         response.prepare_payload();
+
     } else {
-        throw std::invalid_argument(BADREQUEST);
+        MakeErrorString(http::status::bad_request, "Bad request", req, response, ContentType::APP_JSON);
     }
 }
 
-StringResponse MakeStringResponse(http::status status, RequestType req_type, StringRequest&& req, const model::Game& game) {
+StringResponse MakeStringResponse(http::status status, RequestType req_type, StringRequest&& req, const model::Game& game, const std::string& staticFolderPath) {
     StringResponse response(status, req.version());
     response.keep_alive(req.keep_alive());
 
     switch (req_type) {
     case RequestType::GET:
-        HandleGETResponse(response, req, game);
+        HandleGETResponse(response, req, game, staticFolderPath);
         break;
-    case RequestType::OTHER:
-        response.body() = "Invalid method"sv;
-        response.set(http::field::allow, "GET, HEAD");
-        response.content_length(static_cast<size_t>(14));
-        break;
-    
     default:
-        break;
+        assert(false);
     }
     return response;
 }
 
-void HandleAPIResponse(StringResponse& response, const StringRequest& req, const model::Game& game) {
-    response.set(http::field::content_type, ContentType::APP_JSON);
-    if (req.target() == "/api/v1/maps") {
-        response.body() = std::move(GetStringFromMaps(game.GetMaps()));
-    } else if (req.target().substr(0, 13) == "/api/v1/maps/") {
-        std::string needed_map = std::string(req.target().substr(13, req.target().size()));
-        auto tmp = std::move(FoundAndGetStringMap(game.GetMaps(), needed_map));
-        if (tmp.has_value()) {
-            response.body() = std::move(*tmp);
-        } else {
-            throw std::invalid_argument(MAPNOTFOUND);
-        }
+StringResponse HandleRequestSendResponse(StringRequest&& req, const model::Game& game, const std::string& staticFolderPath) {
+    if (req.method_string() == "GET"s) {
+        return MakeStringResponse(http::status::ok, RequestType::GET, move(req), game, staticFolderPath);
     } else {
-        throw std::invalid_argument(BADREQUEST);
-    }
-    response.content_length(response.body().size());
-}
-
-StringResponse HandleRequest(StringRequest&& req, const model::Game& game) {
-    try {
-        if (req.method_string() == "GET"s) {
-            return MakeStringResponse(http::status::ok, RequestType::GET, move(req), game);
-        } else {
-            return MakeStringResponse(http::status::method_not_allowed, RequestType::OTHER, move(req), game);
-        }
-    } catch (const std::exception& err) {
-        if (err.what() == MAPNOTFOUND) {
-            return MakeErrorString(MAPNOTFOUND, req);
-        } else if (err.what() == BADREQUEST) {
-            return MakeErrorString(BADREQUEST, req);
-        } else {
-            
-        }
+        return MakeStringResponse(http::status::method_not_allowed, RequestType::OTHER, move(req), game, staticFolderPath);
     }
 }
 

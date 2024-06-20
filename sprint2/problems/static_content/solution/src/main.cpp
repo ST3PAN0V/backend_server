@@ -27,13 +27,14 @@ void RunWorkers(unsigned n, const Fn& fn) {
 }  // namespace
 
 int main(int argc, const char* argv[]) {
-    if (argc != 2) {
-        std::cerr << "Usage: game_server <game-config-json>"sv << std::endl;
+    if (argc != 3) {
+        std::cerr << "Usage: game_server <game-config-json> <static-folder>"sv << std::endl;
         return EXIT_FAILURE;
     }
     try {
         // 1. Загружаем карту из файла и построить модель игры
         model::Game game = json_loader::LoadGame(argv[1]);
+        
         // 2. Инициализируем io_context
         const unsigned num_threads = std::thread::hardware_concurrency();
         net::io_context ioc(num_threads);
@@ -45,6 +46,7 @@ int main(int argc, const char* argv[]) {
                 ioc.stop();
             }
         });
+        
         // 4. Создаём обработчик HTTP-запросов и связываем его с моделью игры
         http_handler::RequestHandler handler{game};
 
@@ -52,8 +54,8 @@ int main(int argc, const char* argv[]) {
         net::ip::address address = net::ip::make_address("0.0.0.0");
         const unsigned int port = 8080;
 
-        http_server::ServeHttp(ioc, {address, port}, [&handler, &game](auto&& req, auto&& send) {
-            send(http_server::HandleRequest(std::forward<decltype(req)>(req), game));
+        http_server::ServeHttp(ioc, {address, port}, [&handler, &game, &argv](auto&& req, auto&& send) {
+            send(http_server::HandleRequestSendResponse(std::forward<decltype(req)>(req), game, argv[2]));
         });
 
         // Эта надпись сообщает тестам о том, что сервер запущен и готов обрабатывать запросы
