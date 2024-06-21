@@ -38,6 +38,18 @@ struct ContentType {
     constexpr static std::string_view TEXT_HTML = "text/html"sv;
     constexpr static std::string_view APP_JSON = "application/json"sv;
     constexpr static std::string_view TEXT_PLAIN = "text/plain"sv;
+    constexpr static std::string_view TEXT_CSS = "text/css"sv;
+    constexpr static std::string_view TEXT_JS = "text/javascript"sv;
+    constexpr static std::string_view APP_XML = "application/xml"sv;
+    constexpr static std::string_view IMAGE_PNG = "image/png"sv;
+    constexpr static std::string_view IMAGE_JPEG = "image/jpeg"sv;
+    constexpr static std::string_view IMAGE_GIF = "image/gif"sv;
+    constexpr static std::string_view IMAGE_BMP = "image/bmp"sv;
+    constexpr static std::string_view IMAGE_ICO = "image/vnd.microsoft.icon"sv;
+    constexpr static std::string_view IMAGE_TIFF = "image/tiff"sv;
+    constexpr static std::string_view IMAGE_SVG = "image/svg+xml"sv;
+    constexpr static std::string_view IMAGE_MP3 = "audio/mpeg"sv;
+    constexpr static std::string_view BIN = "application/octet-stream"sv;
     // При необходимости внутрь ContentType можно добавить и другие типы контента
 };
 

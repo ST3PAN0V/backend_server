@@ -131,19 +131,64 @@ void HandleGETResponse(StringResponse& response, const StringRequest& req, const
 }
 
 void HandleSTATICResponse(StringResponse& response, const StringRequest& req, const model::Game& game, const std::string& staticFolderPath) {
-    std::string modStaticPath = "/" + staticFolderPath;
     std::string requestTarget = std::string(req.target().data(), req.target().size());
 
-    if (IsSubPath(modStaticPath + requestTarget, modStaticPath)) {
-        std::string file_path = "./.." + modStaticPath + requestTarget;
-        if (requestTarget == "/") {
-            file_path = "./.." + modStaticPath + "/index.html";
+    auto detectFormatFile = [](const std::string& filename){
+        size_t pos = filename.find_last_of('.');
+        if (pos != std::string::npos) {
+            return filename.substr(pos + 1);
+        } else {
+            return std::string("bin");
         }
-        std::ifstream file_stream(file_path);
+    };
+
+    auto chooseMIMEtype = [](std::string filetype){
+        if (filetype == "bin") {
+            return ContentType::BIN;
+        } else if (filetype == "htm" || filetype == "html") {
+            return ContentType::TEXT_HTML;
+        } else if (filetype == "txt") {
+            return ContentType::TEXT_PLAIN;
+        } else if (filetype == "js") {
+            return ContentType::TEXT_JS;
+        } else if (filetype == "css") {
+            return ContentType::TEXT_CSS;
+        } else if (filetype == "json") {
+            return ContentType::APP_JSON;
+        } else if (filetype == "xml") {
+            return ContentType::APP_XML;
+        } else if (filetype == "png") {
+            return ContentType::IMAGE_PNG;
+        } else if (filetype == "jpg" || filetype == "jpe" || filetype == "jpeg") {
+            return ContentType::IMAGE_JPEG;
+        } else if (filetype == "bmp") {
+            return ContentType::IMAGE_BMP;
+        } else if (filetype == "svg" || filetype == "svgz") {
+            return ContentType::IMAGE_SVG;
+        } else if (filetype == "mp3") {
+            return ContentType::IMAGE_MP3;
+        } else if (filetype == "ico") {
+            return ContentType::IMAGE_ICO;
+        } else if (filetype == "gif") {
+            return ContentType::IMAGE_GIF;
+        } else if (filetype == "tif" || filetype == "tiff") {
+            return ContentType::IMAGE_TIFF;
+        } else {
+            return ContentType::BIN;
+        }
+    };
+
+    if (IsSubPath(staticFolderPath + requestTarget, staticFolderPath)) {
+        std::string file_path = staticFolderPath + requestTarget;
+        if (requestTarget == "/") {
+            file_path = staticFolderPath + "index.html";
+        }
+        std::ifstream file_stream(file_path, std::ios::in);
         
-        if (file_stream) {
+        if (file_stream.is_open()) {
             std::string file_contents((std::istreambuf_iterator<char>(file_stream)), std::istreambuf_iterator<char>());
             response.body() = file_contents;
+            response.set(http::field::content_type, chooseMIMEtype(detectFormatFile(file_path)));
         } else {
             MakeErrorString(http::status::not_found, "Not found", req, response, ContentType::TEXT_PLAIN);
         }
