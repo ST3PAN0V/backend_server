@@ -1,36 +1,37 @@
-#include <network/rest_api/api.h>
-#include <network/http_server.h>
+#include "network/rest_api/api.h"
+#include "network/http_server.h"
+
 #include <cassert>
 
 namespace http_handler {
 
 API_TYPE Api::RestApiHandlerType(const std::string_view& request_target) {    
-    if (request_target.find("/api/v1/maps") == 0) {
+    if (request_target.find("/api/v1/maps"s) == 0) {
         return API_TYPE::MAPS_API;
     }
-    else if (request_target.find("/api/v1/game/join") == 0) {
+    else if (request_target.find("/api/v1/game/join"s) == 0) {
         return API_TYPE::GAME_JOIN;
     }
-    else if (request_target.find("/api/v1/game/players") == 0) {
+    else if (request_target.find("/api/v1/game/players"s) == 0) {
         return API_TYPE::GAME_PLAYERS;
     }
-    else if (request_target.find("/api/v1/game/state") == 0) {
+    else if (request_target.find("/api/v1/game/state"s) == 0) {
         return API_TYPE::GAME_STATE;
     }
-    else if (request_target.find("/api/v1/game/player/action") == 0) {
+    else if (request_target.find("/api/v1/game/player/action"s) == 0) {
         return API_TYPE::GAME_PLAYER_ACTION;
     }
-    else if (request_target.find("/api/v1/game/tick") == 0) {
+    else if (request_target.find("/api/v1/game/tick"s) == 0) {
         if (use_tick_api_) {
             return API_TYPE::GAME_TICK;
         }
         else {
-            assert(!"Bad API type");
+            assert(!"Bad API type"s);
             return API_TYPE::UNKNOWN;
         }
     }
     else {
-        assert(!"Bad API type");
+        assert(!"Bad API type"s);
         return API_TYPE::UNKNOWN;
     }
 }
@@ -164,7 +165,7 @@ Response Api::MakePostResponse(const StringRequest& req) {
                     return text_response(http::status::bad_request, response);
                 }
             }
-            catch(...) {
+            catch(std::exception const& e) {
                 return text_response(http::status::bad_request, response);
             }
 

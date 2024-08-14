@@ -1,19 +1,19 @@
-#include <application.h>
+#include "application.h"
+
 #include <boost/url.hpp>
 
 namespace application {
 
 std::optional<std::string> check_token(const std::string& autorization_text) {
-    std::string bearer = "Bearer ";
-    std::string example_token = "77777777777777777777777777777777";
+    const std::string sample_token = "Bearer ";
+    const int token_data_size = 33;
 
-    if ((autorization_text.substr(0, bearer.size()) != bearer) || 
-       (autorization_text.size() < (bearer.size() + example_token.size()))) {
+    if ((autorization_text.substr(0, bearer.size()) != sample_token) ||
+        (autorization_text.size() != sample_token.size() + token_data_size)) {
         return std::nullopt;
     }
 
-    auto token = autorization_text.substr(bearer.size(), autorization_text.size());
-    return token;
+    return autorization_text.substr(bearer.size());
 }
 
 std::string SerializeMessageCode(const std::string& code, const std::string& message) {
@@ -48,11 +48,9 @@ std::string Application::GetMapJson(const std::string& request_target, http::sta
             response_status = http::status::ok;
             return *map;
         }
-        else 
-        {
-            response_status = http::status::not_found;
-            return SerializeMessageCode("mapNotFound", "Map not found");
-        }
+
+        response_status = http::status::not_found;
+        return SerializeMessageCode("mapNotFound", "Map not found");
     }
 }
 
@@ -79,13 +77,10 @@ std::string Application::Tick(const std::string& jsonBody, APPLICATION_ERROR& ap
 
     // check timeDelta format
     uint64_t time_delta = 0;
-    if (auto n = time_delta_json.if_int64(); n && *n > 0) {
+    if (auto n = time_delta_json.if_uint64()) {
         time_delta = *n;
-    } 
-    else if (auto n = time_delta_json.if_uint64()) {
-        time_delta = *n;           
-    }
-    else {
+
+    } else {
         return json_parsing_error(app_error);
     }
 
@@ -192,7 +187,6 @@ std::string Application::Join(const std::string& jsonBody, APPLICATION_ERROR& jo
     
     auto invalid_argument = SerializeMessageCode("invalidArgument", "Join game error");
 
-    std::string resp;
     std::string userName;
     std::string mapId;
 

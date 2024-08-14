@@ -1,5 +1,7 @@
 #pragma once
-#include <sdk.h>
+
+#include "model.h"
+
 #include <boost/json.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/strand.hpp>
@@ -7,7 +9,6 @@
 #include <boost/beast/http.hpp>
 #include <string>
 #include <random>
-#include <model.h>
 #include <sstream>
 #include <optional>
 #include <iomanip>

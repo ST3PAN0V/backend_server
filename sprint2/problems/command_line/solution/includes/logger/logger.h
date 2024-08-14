@@ -1,4 +1,5 @@
-#pragma once 
+#pragma once
+
 #include <ostream>
 #include <iostream>
 #include <mutex>

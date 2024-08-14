@@ -1,4 +1,7 @@
 #pragma once
+
+#include "tagged.h"
+
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -6,8 +9,6 @@
 #include <atomic>
 #include <map>
 #include <memory>
-
-#include <tagged.h>
 
 namespace model {
 

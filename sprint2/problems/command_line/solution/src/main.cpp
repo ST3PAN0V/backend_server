@@ -1,5 +1,9 @@
-#include <sdk.h>
-//
+#include "sdk.h"
+#include "json_loader.h"
+#include "network/request_handler.h"
+#include "logger/logger.h"
+#include "ticker.h"
+
 #include <boost/asio/signal_set.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/program_options.hpp>
@@ -7,10 +11,7 @@
 #include <iostream>
 #include <thread>
 
-#include <json_loader.h>
-#include <network/request_handler.h>
-#include <logger/logger.h>
-#include <ticker.h>
+
 
 using namespace std::literals;
 namespace net = boost::asio;
@@ -36,7 +37,6 @@ void RunWorkers(unsigned workers_count, const Fn& fn) {
     po::options_description desc{"All options"s};
     // Выводим описание параметров программы
     http_handler::Args args;
-    uint64_t tick_time = 0;
     desc.add_options()
         // Параметр --help (-h) должен выводить информацию о параметрах командной строки.
         ("help,h", "help message")
