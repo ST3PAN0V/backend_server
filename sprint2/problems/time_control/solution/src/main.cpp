@@ -1,161 +1,266 @@
-#include <sdk.h>
-//
-#include <boost/asio/signal_set.hpp>
-#include <boost/asio/io_context.hpp>
-#include <boost/program_options.hpp>
-#include <memory>
+#include "sdk.h"
+
 #include <iostream>
 #include <thread>
 
-#include <json_loader.h>
-#include <network/request_handler.h>
-#include <logger/logger.h>
-#include <ticker.h>
+#include <boost/asio/signal_set.hpp>
+#include <boost/asio/io_context.hpp>
+
+#include <boost/log/core.hpp>
+#include <boost/log/trivial.hpp>
+#include <boost/log/expressions.hpp>
+#include <boost/log/utility/setup/console.hpp>
+#include <boost/log/utility/setup/common_attributes.hpp>
+#include <boost/log/utility/manipulators/add_value.hpp>
+#include <boost/date_time.hpp>
+
+#include <boost/json.hpp>
+
+#include <boost/beast/http.hpp>
+
+
+#include "json_loader.h"
+#include "request_handler.h"
+
+
+//для запуска из build/bin
+//./game_server ../../data/config.json ../../static
+//для запуска из build
+//bin/game_server ../data/config.json ../static
 
 using namespace std::literals;
 namespace net = boost::asio;
 namespace sys = boost::system;
-namespace po = boost::program_options;
+namespace logging = boost::log;
+namespace keywords = boost::log::keywords;
+namespace json = boost::json;
+namespace http = boost::beast::http;
 
-namespace {
-
-// Запускает функцию fn на n потоках, включая текущий
-template <typename Fn>
-void RunWorkers(unsigned workers_count, const Fn& fn) {
-    auto _workers_count = std::max(1u, workers_count);
-    std::vector<std::jthread> workers;
-    workers.reserve(_workers_count - 1);
-    // Запускаем workers_count-1 рабочих потоков, выполняющих функцию fn
-    while (--_workers_count) {
-        workers.emplace_back(fn);
+namespace 
+{
+    // Запускает функцию fn на n потоках, включая текущий
+    template <typename Fn>
+    void RunWorkers(unsigned n, const Fn& fn)
+    {
+        n = std::max(1u, n);
+        std::vector<std::jthread> workers;
+        workers.reserve(n - 1);
+        // Запускаем n-1 рабочих потоков, выполняющих функцию fn
+        while (--n) 
+        {
+            workers.emplace_back(fn);
+        }
+        fn();
     }
-    fn();
-}
-
-[[nodiscard]] std::optional<http_handler::Args> ParseCommandLine(int argc, const char* const argv[]) {
-    po::options_description desc{"All options"s};
-    // Выводим описание параметров программы
-    http_handler::Args args;
-    uint64_t tick_time = 0;
-    desc.add_options()
-        // Параметр --help (-h) должен выводить информацию о параметрах командной строки.
-        ("help,h", "help message")
-        // Параметр --tick-period (-t) задаёт период автоматического обновления игрового состояния в миллисекундах. 
-        // Если этот параметр указан, каждые N миллисекунд сервер должен обновлять координаты объектов. 
-        // Если этот параметр не указан, время в игре должно управляться с помощью запроса /api/v1/game/tick к REST API
-        ("tick-period,t", po::value(&args.tick_time)->value_name("milliseconds"s), "auto tick time in milliseconds")
-        // Параметр --config-file (-c) задаёт путь к конфигурационному JSON-файлу игры.
-        ("config-file,c", po::value(&args.config_file)->value_name("file"s), "game config file path")
-        // Параметр --www-root (-w) задаёт путь к каталогу со статическими файлами игры.
-        ("www-root,w", po::value(&args.www_root)->value_name("dir"s), "resource root directory path")
-        // Параметр --randomize-spawn-points включает режим, при котором пёс игрока появляется в случайной точке случайно выбранной дороги карты.
-        ("randomize-spawn-points", "random dog spawn position");
-    
-    // variables_map хранит значения опций после разбора
-    po::variables_map vm;
-    po::store(po::parse_command_line(argc, argv, desc), vm);
-    po::notify(vm);
-    if (vm.contains("help")) {
-        // Если был указан параметр --help, то выводим справку и возвращаем nullopt
-        std::cout << desc;
-        return std::nullopt;
-    }
-
-    if (vm.contains("tick-period")) {
-        args.use_tick_api = false;
-    }
-    else {
-        args.use_tick_api = true;
-    }
-    // Проверяем наличие опций src и dst
-    if (!vm.contains("config-file")) {
-        throw std::runtime_error("Config files have not been specified");
-    }
-    if (!vm.contains("www-root"s)) {
-        throw std::runtime_error("Static file path is not specified");
-    }
-    if (vm.contains("randomize-spawn-points")) {
-        args.randomize_spawn_points = true;
-    }
-    // С опциями программы всё в порядке, возвращаем структуру args
-    return args;
-}
-
 }  // namespace
 
-int main(int argc, const char* argv[]) {
-    http_handler::Args args;
-    try {
-        if (auto args_opt = ParseCommandLine(argc, argv)) {
-            args = std::move(args_opt.value());
+static const std::string ip_address{"0.0.0.0"};
+const auto address = net::ip::make_address(ip_address);
+constexpr net::ip::port_type port = 8080;
+
+BOOST_LOG_ATTRIBUTE_KEYWORD(additional_data, "AdditionalData", json::value)
+BOOST_LOG_ATTRIBUTE_KEYWORD(timestamp, "TimeStamp", boost::posix_time::ptime)
+
+void MyFormatter(const logging::record_view& rec, 
+                 logging::formatting_ostream& strm) 
+{
+    auto ts = *rec[timestamp];
+
+    std::string time = to_iso_extended_string(ts);    
+    json::object obj{
+        {"timestamp", time},
+        {"message", *rec[logging::expressions::smessage]},        
+        {"data", *rec[additional_data] }
+    };
+    strm<<serialize(obj);
+} 
+
+void BoostLogConfigure()
+{
+    boost::log::add_common_attributes();
+    
+    logging::add_console_log( 
+        std::cout,        
+        keywords::format = &MyFormatter,
+        keywords::auto_flush = true
+    ); 
+}
+
+template<class SomeRequestHandler>
+class LoggingRequestHandler
+{
+        static void LogRequest(const net::ip::tcp::socket& socket,
+                               const http::request<http::string_body>& r)
+        {
+            using namespace std::literals;
+            
+            const std::string ip{socket.lowest_layer().remote_endpoint().address().to_string()} ;
+            const std::string method{http::to_string(r.method())};
+            const std::string URI{r.target()};
+            json::value custom_data{
+                {"ip"s, ip},
+                {"URI"s, URI},
+                {"method"s, method}
+            };
+            BOOST_LOG_TRIVIAL(info) << logging::add_value(additional_data, custom_data)
+                                    << "request received"sv;
         }
-        else {
-            return EXIT_SUCCESS;
+        
+        static void LogResponse(int64_t response_time, 
+                                int code, 
+                                std::string_view content_type)
+        {
+            using namespace std::literals;
+            
+            json::value custom_data{
+                {"response_time"s, response_time},
+                {"code"s, code},
+                {"content_type"s, content_type}
+            };
+            BOOST_LOG_TRIVIAL(info) << logging::add_value(additional_data, custom_data)
+                                        << "response sent"sv;
         }
+    
+    public:
+        template <typename Body, typename Allocator, typename Send>
+        void operator () (const net::ip::tcp::socket& socket, 
+                          http::request<Body, http::basic_fields<Allocator>>&& req, 
+                          Send&& send) 
+        {
+            LogRequest(socket, req);
+            
+            using namespace std::chrono;
+            system_clock::time_point start_ts{system_clock::now()};
+        
+            decorated_(socket, std::forward<decltype(req)>(req),  
+                       [&send, &start_ts](auto&& response)
+            {   
+                const auto diff = system_clock::now() - start_ts;
+                const int64_t dd = duration_cast<milliseconds>(diff).count();                
+                                             
+                LogResponse(dd, 
+                            response.result_int(), 
+                            response.at(http::field::content_type));        
+                send(std::move(response));
+            });
+        }
+        
+        explicit LoggingRequestHandler(SomeRequestHandler& decorated):
+        decorated_{decorated}
+        {}
+    
+    private:
+        SomeRequestHandler& decorated_;
+};
+
+namespace http_server 
+{
+    void ReportError(beast::error_code ec, std::string_view what) 
+    {
+        using namespace std::literals;
+        
+        json::value custom_data{
+            {"code"s, ec.value()},
+            {"text"s, ec.message()},
+            {"where"s, what}
+        };
+        BOOST_LOG_TRIVIAL(info) << logging::add_value(additional_data, custom_data)
+                                    << "error"sv;
     }
-    catch (const std::exception& e) {
-        std::cout << e.what() << std::endl;
+}
+
+int main(int argc, const char* argv[]) 
+{
+    if (argc != 3)
+    {
+        std::cerr << "Usage: game_server <game-config-json> <stati-content-folder>"sv << std::endl;
         return EXIT_FAILURE;
     }
     
-    try {
-        // 0. Init boost log filter
-        logger::InitBoostLogFilter();
-
+    BoostLogConfigure();
+    
+    
+    try 
+    { 
         // 1. Загружаем карту из файла и построить модель игры
-        model::Game game = json_loader::LoadGame(args.config_file);
-        game.SetRandomizeSpawnPoints(args.randomize_spawn_points);        
-
-
+        model::Game game = json_loader::LoadGame(argv[1]);
+    
+        if(game.GetMaps().empty())
+        {
+            //std::string path{argv[1]};
+            //std::cerr << "File game-config is empty: "sv<< path << std::endl;
+            json::value custom_data{
+                {"code"s, EXIT_FAILURE}
+            };
+            BOOST_LOG_TRIVIAL(info) << logging::add_value(additional_data, custom_data)
+                                        << "server exited"sv;
+            return EXIT_FAILURE;
+        }
+                
         // 2. Инициализируем io_context
         const unsigned num_threads = std::thread::hardware_concurrency();
         net::io_context ioc(num_threads);
 
+        auto api_strand = net::make_strand(ioc);
+        
         // 3. Добавляем асинхронный обработчик сигналов SIGINT и SIGTERM
-        // Подписываемся на сигналы и при их получении завершаем работу сервера
         net::signal_set signals(ioc, SIGINT, SIGTERM);
-        signals.async_wait([&ioc](const sys::error_code& ec, [[maybe_unused]] int signal_number) {
-            if (!ec) {
-                LOG_MSG().server_stop(ec);
+        signals.async_wait([&ioc](const sys::error_code& ec, [[maybe_unused]] int signal_number)
+        {
+            if (!ec) 
+            {
                 ioc.stop();
             }
         });
-
-        // strand для выполнения запросов к API
-        auto api_strand = net::make_strand(ioc);
+        
         // 4. Создаём обработчик HTTP-запросов и связываем его с моделью игры
-        http_handler::RequestHandler handler{game, args, api_strand};
-        http_handler::LoggingRequestHandler logging_handler{handler};
+        http_handler::RequestHandler handler{game, std::string{argv[2]}, api_strand};
 
-        // 5. Настраиваем вызов метода Game::Tick каждые tick_time миллисекунд внутри api_strand
-        auto ticker = std::make_shared<ticker::Ticker>( api_strand,
-                                                        args.tick_time,
-                                                        [&game](uint64_t delta) { 
-                                                            game.Tick(delta); 
-                                                        }
-        );
-
-        // 6. Запустить обработчик HTTP-запросов, делегируя их обработчику запросов
-        const auto address = net::ip::make_address("0.0.0.0");
-        constexpr net::ip::port_type port = 8080;
-        http_server::ServeHttp(ioc, {address, port}, [&logging_handler](auto&& req, auto&& send, auto&& socket) {
-            logging_handler(
-                std::forward<decltype(req)>(req), 
-                std::forward<decltype(send)>(send), 
-                socket);
+        LoggingRequestHandler<http_handler::RequestHandler> logging_handler{handler};
+        // 5. Запустить обработчик HTTP-запросов, делегируя их обработчику запросов        
+        http_server::ServeHttp(ioc, {address, port}, 
+                               [&logging_handler](
+                               const net::ip::tcp::socket& socket, 
+                               auto&& req, 
+                               auto&& send) 
+        {
+            logging_handler(socket, 
+                            std::forward<decltype(req)>(req), 
+                            std::forward<decltype(send)>(send));
         });
-        // 7. Запустить ticker
-        ticker->Start();
+        
 
-        // 8. Эта надпись сообщает тестам о том, что сервер запущен и готов обрабатывать запросы
-        LOG_MSG().server_start(address.to_string(), port);
-
-        // 9. Запускаем обработку асинхронных операций
-        RunWorkers(std::max(1u, num_threads), [&ioc] {
+        // Эта надпись сообщает тестам о том, что сервер запущен и готов обрабатывать запросы
+        //std::cout << "Server has started..."sv << std::endl;
+        json::value custom_data{
+            {"port"s, port}, 
+            {"address"s, ip_address}
+        };
+        BOOST_LOG_TRIVIAL(info) << logging::add_value(additional_data, custom_data)
+                                    << "server started"sv;
+            
+        // 6. Запускаем обработку асинхронных операций
+        RunWorkers(std::max(1u, num_threads), [&ioc] 
+        {
             ioc.run();
         });
-    } catch (const std::exception& ex) {
-        std::cerr << ex.what() << std::endl;
+    } 
+    catch (const std::exception& ex) 
+    {
+        std::string what_str{ex.what()}; 
+        json::value custom_data{
+            {"code"s, EXIT_FAILURE},
+            {"exception"s, what_str}
+        };
+        BOOST_LOG_TRIVIAL(info) << logging::add_value(additional_data, custom_data)
+                                    << "server exited"sv;
         return EXIT_FAILURE;
     }
+    
+    json::value custom_data{
+        {"code"s, 0}
+    };
+    BOOST_LOG_TRIVIAL(info) << logging::add_value(additional_data, custom_data)
+                                << "server exited"sv;
+    return 0;
 }
