@@ -1,6 +1,9 @@
 #pragma once
 
 #include <compare>
+#include <utility>
+#include <cstddef>
+#include <functional>
 
 namespace util {
 

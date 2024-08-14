@@ -16,8 +16,7 @@ model::Road LoadRoad(const ptree &road) {
         point_start.y = road.get<int>("y0");
         if (road.to_iterator(road.find("y1")) == road.end()) {
             return model::Road(model::Road::HORIZONTAL, point_start, road.get<int>("x1"));
-        }
-        else {
+        } else {
             return model::Road(model::Road::VERTICAL, point_start, road.get<int>("y1"));
         }
     }

@@ -8,12 +8,12 @@ std::optional<std::string> check_token(const std::string& autorization_text) {
     const std::string sample_token = "Bearer ";
     const int token_data_size = 33;
 
-    if ((autorization_text.substr(0, bearer.size()) != sample_token) ||
+    if ((autorization_text.substr(0, sample_token.size()) != sample_token) ||
         (autorization_text.size() != sample_token.size() + token_data_size)) {
         return std::nullopt;
     }
 
-    return autorization_text.substr(bearer.size());
+    return autorization_text.substr(sample_token.size());
 }
 
 std::string SerializeMessageCode(const std::string& code, const std::string& message) {
@@ -40,8 +40,7 @@ std::string Application::GetMapJson(const std::string& request_target, http::sta
     if (map_name.empty()) {
         response_status = http::status::ok;
         return model_serializer.SerializeMaps();
-    }
-    else {
+    } else {
         auto map = model_serializer.SerializeMap(map_name);
         if (map)
         {
@@ -77,9 +76,10 @@ std::string Application::Tick(const std::string& jsonBody, APPLICATION_ERROR& ap
 
     // check timeDelta format
     uint64_t time_delta = 0;
-    if (auto n = time_delta_json.if_uint64()) {
-        time_delta = *n;
+    auto valid_time = time_delta_json.if_int64();
 
+    if (valid_time != nullptr) {
+        time_delta = *valid_time;
     } else {
         return json_parsing_error(app_error);
     }
@@ -262,8 +262,7 @@ gameplay::Player* Application::GetPlayer(const std::string& name, const std::str
         auto dog = session->AddDog(name);
         auto player = players_.Add(dog, session);
         return player;
-    }
-    else {
+    } else {
         return players_.FindPlayer(*player_id, map_id);
     }
     return nullptr;

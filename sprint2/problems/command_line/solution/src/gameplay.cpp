@@ -76,24 +76,15 @@ std::optional<std::string> ModelJsonSerializer::SerializeMap(const std::string& 
 
 void Player::Move(const std::string& command) {
     model::DOG_MOVE dog_move;
-    if (command == "L") 
-    {
+    if (command == "L") {
         dog_move = model::DOG_MOVE::LEFT;
-    }
-    else if (command == "R")
-    {
+    } else if (command == "R") {
         dog_move = model::DOG_MOVE::RIGHT;
-    }
-    else if (command == "U")
-    {
+    } else if (command == "U") {
         dog_move = model::DOG_MOVE::UP;
-    }
-    else if (command == "D")
-    {
+    } else if (command == "D") {
         dog_move = model::DOG_MOVE::DOWN;
-    }
-    else 
-    {
+    } else {
         dog_move = model::DOG_MOVE::STAND;
     }
     session_->MoveDog(dog_->GetId(), dog_move);    
@@ -104,6 +95,7 @@ Player* PlayerTokens::FindPlayer(const Token& token)
     if (token_to_player.contains(token)) {
         return token_to_player.at(token);
     }
+    
     return nullptr;
 }
 
@@ -119,8 +111,7 @@ Player* Players::Add(model::Dog* dog, model::GameSession* session) {
     std::unique_ptr<Player> player = std::make_unique<Player>(session, dog);
     if (auto [it, inserted] = player_id_to_index_.emplace(player->GetId(), index); !inserted) {
         throw std::invalid_argument("Player with id "s + std::to_string(*player->GetId()) + " already exists"s);
-    }
-    else {
+    } else {
         try {
             players_.emplace_back(std::move(player));
         }
@@ -146,8 +137,7 @@ const Player::Id* Players::FindPlayerId(std::string player_name, model::Map::Id 
     auto check_player_condition = [&](const auto& player) {
         if (player->GetName() == player_name && player->MapId() == map_id) {
             return true;
-        }
-        else {
+        } else {
             return false;
         }
     };
@@ -155,8 +145,7 @@ const Player::Id* Players::FindPlayerId(std::string player_name, model::Map::Id 
     auto palyer = std::find_if(begin(players_), end(players_), check_player_condition);
     if (palyer == end(players_)) {
         return nullptr;
-    }
-    else {
+    } else {
         return &(*palyer)->GetId();
     }
 }
