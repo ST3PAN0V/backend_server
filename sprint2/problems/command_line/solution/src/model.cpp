@@ -1,4 +1,5 @@
-#include <model.h>
+#include "model.h"
+
 #include <random>
 #include <stdexcept>
 
@@ -95,7 +96,7 @@ DogCoordinate Dog::GetEndCoordinate(uint64_t move_time) {
         return dog_coordinate_;
     }
 
-    double move_time_sec = double(move_time) / 1000.0;
+    double move_time_sec = static_cast<double>(move_time) / 1000.0;
     return DogCoordinate {
         dog_coordinate_.x + dog_speed_.x * move_time_sec,
         dog_coordinate_.y + dog_speed_.y * move_time_sec

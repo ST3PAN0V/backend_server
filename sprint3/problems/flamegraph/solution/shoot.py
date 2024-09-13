@@ -57,7 +57,7 @@ def main():
 	stop(server)
 	print("stopped server")
 	time.sleep(1)
-	os.system("sudo perf script -i ./perf.data | sudo ./FlameGraph/stackcollapse-perf.pl | sudo ./FlameGraph/flamegraph.pl > graph.svg")
+	os.system("sudo perf script -i ./perf.data | ./FlameGraph/stackcollapse-perf.pl | ./FlameGraph/flamegraph.pl > graph.svg")
 	print('Job done')
 
 

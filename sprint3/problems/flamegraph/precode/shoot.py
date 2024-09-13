@@ -52,12 +52,12 @@ def main():
 	pid = server.pid
 	perf_process = run(f"sudo perf record -g -p {pid} -o ./perf.data")
 	make_shots()
-	
-	stop(perf_process, wait=True)
+	stop(perf_process)
+	print("Stopped perf")
 	stop(server)
-	
+	print("stopped server")
 	time.sleep(1)
-	os.system("sudo perf script -i ./perf.data | sudo ./FlameGraph/stackcollapse-perf.pl | sudo ./FlameGraph/flamegraph.pl > graph.svg")
+	os.system("perf script -i ./perf.data | ./FlameGraph/stackcollapse-perf.pl | ./FlameGraph/flamegraph.pl > graph.svg")
 	print('Job done')
 
 

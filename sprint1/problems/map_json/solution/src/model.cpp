@@ -2,7 +2,8 @@
 
 #include <stdexcept>
 
-namespace model {
+namespace model 
+{
 using namespace std::literals;
 
 void Map::AddOffice(Office office) {

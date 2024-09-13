@@ -1,7 +1,8 @@
 #pragma once
 #include <compare>
 
-namespace util {
+namespace util 
+{
 
 /**
  * Вспомогательный шаблонный класс "Маркированный тип".
