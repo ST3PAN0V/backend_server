@@ -3,7 +3,6 @@ import subprocess
 import time
 import random
 import shlex
-import os
 
 RANDOM_LIMIT = 1000
 SEED = 123456789
@@ -47,22 +46,9 @@ def make_shots():
         shoot(AMMUNITION[ammo_number])
     print('Shooting complete')
 
-def main():
-	server = run(start_server())
-	pid = server.pid
-	perf_process = run(f"sudo perf record -g -p {pid} -o ./perf.data")
-	make_shots()
-	stop(perf_process)
-	print("Stopped perf")
-	stop(server)
-	print("stopped server")
-	time.sleep(1)
-	os.system("perf script -i ./perf.data | ./FlameGraph/stackcollapse-perf.pl | ./FlameGraph/flamegraph.pl > graph.svg")
-	print('Job done')
 
-
-if __name__ == '__main__':
-	main()
-
-
-
+server = run(start_server())
+make_shots()
+stop(server)
+time.sleep(1)
+print('Job done')
