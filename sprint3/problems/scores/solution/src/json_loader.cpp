@@ -1,5 +1,5 @@
-#include "./../headers/json_loader.h"
-#include "./../headers/game/constants.h"
+#include "json_loader.h"
+#include "constants.h"
 
 #include <fstream>
 

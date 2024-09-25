@@ -1,8 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 
-#include "./../headers/game/model.h"
-#include "./../headers/game/geom.h"
+#include "../src/model.h"
+#include "../src/geom.h"
 
 #include <stdexcept>
 

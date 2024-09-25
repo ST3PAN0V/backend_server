@@ -10,24 +10,23 @@ find_package(Threads REQUIRED)
 
 #Static library
 add_library(GameLib STATIC
-    src/game/model.cpp
-    src/game/loot_data.cpp
-    src/game/loot_generator.cpp
-    src/game/collision_detector.cpp
-    src/server_core/api_handler.cpp
-    src/server_core/application.cpp
-
+    src/model.cpp
+    src/loot_data.cpp
+    src/loot_generator.cpp
+    src/api_handler.cpp
+    src/app.cpp
+    src/collision_detector.cpp
 )
 target_link_libraries(GameLib PUBLIC Threads::Threads CONAN_PKG::boost)
 
 #Server
 add_executable(game_server
     src/main.cpp
-    src/server_core/http_server.cpp
+    src/http_server.cpp
     src/boost_json.cpp
     src/json_loader.cpp
-    src/server_core/request_handler.cpp
-    src/logger/logger.cpp
+    src/request_handler.cpp
+    src/logger.cpp
 )
 target_link_libraries(game_server PRIVATE GameLib CONAN_PKG::boost)
 

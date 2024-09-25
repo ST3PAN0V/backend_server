@@ -1,15 +1,17 @@
-#include "./../headers/sdk.h"
-#include "./../headers/parser.h"
-#include "./../headers/json_loader.h"
-#include "./../headers/server_core/request_handler.h"
-#include "./../headers/server_core/api_handler.h"
-#include "./../headers/server_core/application.h"
-#include "./../headers/logger/logger.h"
-
+#include "sdk.h"
+//
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/signal_set.hpp>
+
 #include <iostream>
 #include <thread>
+
+#include "parser.h"
+#include "json_loader.h"
+#include "request_handler.h"
+#include "api_handler.h"
+#include "app.h"
+#include "logger.h"
 
 using namespace std::literals;
 namespace net = boost::asio;

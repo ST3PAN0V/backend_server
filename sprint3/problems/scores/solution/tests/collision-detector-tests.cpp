@@ -3,7 +3,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 
-#include "./../headers/game/collision_detector.h"
+#include "../src/collision_detector.h"
 
 #include <sstream>
 #include <string>

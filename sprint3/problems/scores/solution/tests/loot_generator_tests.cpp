@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "./../headers/game/loot_generator.h"
+#include "../src/loot_generator.h"
 
 #include <chrono>
 
