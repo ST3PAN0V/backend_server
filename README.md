@@ -1,31 +1,17 @@
-# cpp-backend-template
+# Backend_server
 
-Шаблон репозитория для практического трека «C++ backend».
+##About
+This game was developed by me in the course "C++ for the backend". This is a web server built using a REST API that can receive and asynchronously process incoming requests. Since this is an online game, it was necessary to add sessions. The user logs in and connects to the game. User information is collected in a PostgerSQL database. Unit tests were also written for some parts of the code.
 
-# Начало работы
+##How to run?
 
-Склонируйте репозиторий в любую подходящую директорию на вашем компьютере.
-
-# Обновление шаблона
-
-Чтобы иметь возможность получать обновления автотестов и других частей шаблона выполните следующую команду:
-
+```bash
+git clone git@github.com:ST3PAN0V/backend_server.git
+cd backend_server
+sudo docker build -t stepanov_server .
+sudo docker run --rm -p 80:8080 my_http_server
 ```
-git remote add -m main template https://github.com/cpppracticum/cpp-backend-template-practicum-november.git
-```
+Server has been started. Than go to https://127.0.0.1/
 
-Для обновления шаблона выполните команду:
+Have fun!!!
 
-```
-git fetch template && git checkout template/main .github
-```
-
-Затем добавьте полученные изменения в свой репозиторий.
-
-# Тестирование в Github Actions
-
-При отправке (push) изменений в ветку main репозитория будет запущен пайплайн Github Actions, 
-
-(https://github.com/cpppracticum/cpp-backend-template-practicum-november/actions),
-
-который позволит увидеть результат прохождения тестов.
