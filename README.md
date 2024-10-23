@@ -9,6 +9,5 @@ cd backend_server
 sudo docker build -t stepanov_server .
 sudo docker run --rm -p 80:8080 my_http_server
 ```
-Server has been started. Than go to https://127.0.0.1/.
-Have fun!
+Server has been started. Than go to https://127.0.0.1/
 
