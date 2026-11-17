@@ -1,44 +1,44 @@
-# C++ Game Backend
+# Игровой сервер на C++
 
-An HTTP backend for an online game, developed as part of the **"C++ for the backend"** course. The project brings together asynchronous networking, game-session logic, state serialization, and a PostgreSQL leaderboard.
+HTTP-бэкенд онлайн-игры, разработанный в рамках курса **«C++ для бэкенда»**. Проект объединяет асинхронную работу с сетью, игровые сессии, сериализацию состояния и таблицу результатов в PostgreSQL.
 
-## Features
+## Возможности
 
-- JSON API for maps, joining a game, player actions, and game-state updates.
-- Player tokens and shared game sessions.
-- Asynchronous HTTP handling with Boost.Asio and Boost.Beast, using multiple worker threads.
-- Game ticks, object generation, collision handling, and player scores.
-- Saving and restoring game state through Boost.Serialization.
-- PostgreSQL storage for retired players' scores and play times, with a paginated leaderboard.
-- Static files for the browser client and Catch2 tests for selected components.
+- JSON API для получения карт, подключения к игре, действий игроков и обновлений состояния.
+- Токены игроков и общие игровые сессии.
+- Асинхронная обработка HTTP-запросов через Boost.Asio и Boost.Beast в нескольких рабочих потоках.
+- Игровые такты, генерация объектов, обработка столкновений и подсчёт очков.
+- Сохранение и восстановление состояния через Boost.Serialization.
+- Хранение результатов и времени игры завершивших сессию участников в PostgreSQL; постраничная выдача таблицы результатов.
+- Статические файлы браузерного клиента и тесты отдельных компонентов на Catch2.
 
-## Stack
+## Стек
 
-| Component | Technology |
+| Компонент | Технология |
 | --- | --- |
-| Language | C++20 |
-| Networking and utilities | Boost 1.78.0 |
-| Database client | libpqxx 7.7.4 / PostgreSQL |
-| Tests | Catch2 3.1.0 |
-| Build | CMake, Conan 1.x (`cmake_multi` generator) |
-| Container build | Docker; GCC 11.3 build stage, Ubuntu 22.04 runtime stage |
+| Язык | C++20 |
+| Сеть и вспомогательные библиотеки | Boost 1.78.0 |
+| Клиент базы данных | libpqxx 7.7.4 / PostgreSQL |
+| Тестирование | Catch2 3.1.0 |
+| Сборка | CMake, Conan 1.x, генератор `cmake_multi` |
+| Контейнер | Docker; этап сборки — GCC 11.3, среда запуска — Ubuntu 22.04 |
 
-Dependency versions are defined in [conanfile.txt](conanfile.txt).
+Версии зависимостей заданы в [conanfile.txt](conanfile.txt).
 
-## Repository layout
+## Структура репозитория
 
-| Path | Purpose |
+| Путь | Назначение |
 | --- | --- |
-| [game_server/](game_server/) | HTTP server, request handlers, logging, and database access |
-| [game_lib/](game_lib/) | Game model, application logic, and serialization |
-| [data/](data/) | Game configuration |
-| [static/](static/) | Browser client and static assets |
-| [tests/](tests/) | Model, object generation, collision, and serialization tests |
-| [Dockerfile](Dockerfile) | Container build and server entry point |
+| [game_server/](game_server/) | HTTP-сервер, обработчики запросов, логирование и доступ к базе данных |
+| [game_lib/](game_lib/) | Игровая модель, прикладная логика и сериализация |
+| [data/](data/) | Конфигурация игры |
+| [static/](static/) | Браузерный клиент и статические ресурсы |
+| [tests/](tests/) | Тесты модели, генерации объектов, столкновений и сериализации |
+| [Dockerfile](Dockerfile) | Сборка контейнера и точка входа сервера |
 
-## Build locally
+## Локальная сборка
 
-The following commands assume a Linux/GCC toolchain with C++20 support, CMake 3.11 or newer, and Conan 1.x. The Dockerfile pins Conan 1.65. The build uses the legacy [Conan `cmake_multi` generator](https://docs.conan.io/en/1.65/reference/generators/cmakemulti.html).
+Команды ниже рассчитаны на Linux/GCC с поддержкой C++20, CMake 3.11 или новее и Conan 1.x. В Dockerfile закреплён Conan 1.65. В сборке используется генератор [`cmake_multi` из Conan 1.x](https://docs.conan.io/en/1.65/reference/generators/cmakemulti.html).
 
 ```bash
 git clone https://github.com/ST3PAN0V/backend_server.git
@@ -51,13 +51,13 @@ cmake --build .
 cd ..
 ```
 
-Use a **Debug** dependency installation and build: the test configuration refers to `CONAN_BUILD_DIRS_CATCH2_DEBUG`.
+Устанавливайте зависимости и собирайте проект в режиме **Debug**: конфигурация тестов обращается к `CONAN_BUILD_DIRS_CATCH2_DEBUG`.
 
-## Run
+## Запуск
 
-Prepare a PostgreSQL database and export its connection string as `GAME_DB_URL` in your local environment. The database user needs permission to create the leaderboard table and index, insert records, and read them. PostgreSQL is a separate runtime dependency.
+Подготовьте базу PostgreSQL и экспортируйте строку подключения в переменную окружения `GAME_DB_URL`. Пользователю базы нужны права на создание таблицы результатов и индекса, добавление и чтение записей. PostgreSQL запускается отдельно от приложения.
 
-From the repository root:
+Из корня репозитория выполните:
 
 ```bash
 : "${GAME_DB_URL:?Export GAME_DB_URL before starting the server}"
@@ -70,13 +70,13 @@ mkdir -p runtime
   --save-state-period 5000
 ```
 
-Open [http://127.0.0.1:8080/](http://127.0.0.1:8080/). The server uses HTTP on port `8080`.
+Откройте [http://127.0.0.1:8080/](http://127.0.0.1:8080/). Сервер принимает HTTP-запросы на порту `8080`.
 
-The example sets a 50 ms game tick and saves state every 5,000 ms of game time. Keep the state directory writable. Pass the timing options explicitly: the current argument structure does not initialize omitted integer options.
+В примере игровой такт равен 50 мс, а состояние сохраняется каждые 5 000 мс игрового времени. Каталог состояния должен быть доступен для записи. **Задавайте временные параметры явно:** текущая структура аргументов не инициализирует пропущенные целочисленные опции.
 
 ### Docker
 
-With `GAME_DB_URL` exported and the database reachable from the container:
+После экспорта `GAME_DB_URL` и настройки доступа к базе из контейнера:
 
 ```bash
 docker build -t stepanov_server .
@@ -86,33 +86,33 @@ docker run --rm -p 8080:8080 --env GAME_DB_URL stepanov_server \
   --save-state-period 5000
 ```
 
-The image's entry point supplies the game-configuration and static-file paths. This example stores state inside the temporary container; use a writable mounted location if state must survive container removal.
+Точка входа образа уже задаёт пути к конфигурации игры и статическим файлам. В примере состояние хранится внутри временного контейнера. Чтобы сохранить его после удаления контейнера, используйте доступный для записи подключённый каталог.
 
-## API overview
+## API
 
-| Endpoint | Purpose |
+| Путь | Назначение |
 | --- | --- |
-| `/api/v1/maps` | List maps |
-| `/api/v1/maps/{id}` | Get a map |
-| `/api/v1/game/join` | Join a game and receive a player token |
-| `/api/v1/game/players` | List players in the current session |
-| `/api/v1/game/state` | Read the game state |
-| `/api/v1/game/player/action` | Submit a movement action |
-| `/api/v1/game/records` | Read the leaderboard |
+| `/api/v1/maps` | Получить список карт |
+| `/api/v1/maps/{id}` | Получить карту по идентификатору |
+| `/api/v1/game/join` | Подключиться к игре и получить токен игрока |
+| `/api/v1/game/players` | Получить игроков текущей сессии |
+| `/api/v1/game/state` | Получить состояние игры |
+| `/api/v1/game/player/action` | Отправить команду движения |
+| `/api/v1/game/records` | Получить таблицу результатов |
 
-Player-specific requests use the token returned by `join` in the `Authorization: Bearer ...` header. See [request_handler.cpp](game_server/src/request_handler.cpp) for methods and validation, and [api_handler.cpp](game_server/src/api_handler.cpp) for the JSON payloads.
+Запросы от имени игрока используют токен, возвращённый `join`, в заголовке `Authorization: Bearer ...`. HTTP-методы и проверки описаны в [request_handler.cpp](game_server/src/request_handler.cpp), структуры JSON — в [api_handler.cpp](game_server/src/api_handler.cpp).
 
-## Tests
+## Тесты
 
-After the Debug build, run CTest from the directory where the tests are registered:
+После сборки в режиме Debug запустите CTest из каталога, где зарегистрированы тесты:
 
 ```bash
 cd build/tests
 ctest --output-on-failure
 ```
 
-The configured test executables are `game_server_tests`, `collision_detection_tests`, and `state_serialization_tests`.
+В конфигурации предусмотрены исполняемые файлы `game_server_tests`, `collision_detection_tests` и `state_serialization_tests`.
 
-## Scope
+## Контекст и границы проекта
 
-This is a course project for exploring backend development. PostgreSQL stores leaderboard records; player tokens and game-state persistence are separate parts of the application. No production deployment, load benchmark, or latency guarantee is claimed.
+Проект выполнен для изучения бэкенд-разработки. PostgreSQL хранит записи таблицы результатов; токены игроков и сохранение игрового состояния реализованы в других частях приложения. Промышленное развёртывание, нагрузочные показатели и гарантии задержек в документации не заявлены.
